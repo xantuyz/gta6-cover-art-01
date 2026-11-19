@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Cover Studio — turn your photos into a poster cover</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="app">
+  <section class="controls" aria-label="Cover controls">
+    <h1>Vice Cover Studio</h1>
+    <p class="tagline">Your photos, a sunset poster cover. 100% offline — your photos never leave this browser.</p>
+
+    <div id="dropzone" class="dropzone">
+      <label class="file-label">Add photos
+        <input id="photo" type="file" accept="image/*" multiple>
+      </label>
+      <span>or drop up to 3 photos here</span>
+    </div>
+
+    <label>Layout
+      <select id="layout"></select>
+    </label>
+    <label>Grade
+      <select id="theme"></select>
+    </label>
+    <label>Photos across panels
+      <select id="fillMode">
+        <option value="all">One photo, all panels</option>
+        <option value="per-panel">One photo per panel</option>
+      </select>
+    </label>
+
+    <label>Title
+      <input id="title" type="text" maxlength="40" value="Sunset Heist">
+    </label>
+    <label>Sub-caption
+      <input id="subtitle" type="text" maxlength="60" value="Vice City Nights">
+    </label>
+    <div class="row">
+      <label>Title position
+        <select id="titlePos">
+          <option value="bottom">Bottom</option>
+          <option value="middle">Middle</option>
+          <option value="top">Top</option>
+        </select>
+      </label>
+      <label>Title colour
+        <select id="titleColor">
+          <option value="#ffffff">White</option>
+          <option value="#ffd23f">Sunset yellow</option>
+          <option value="#ff5e8a">Hot pink</option>
+          <option value="#00e5ff">Neon cyan</option>
+        </select>
+      </label>
+    </div>
+
+    <fieldset class="panel-tools">
+      <legend>Selected panel</legend>
+      <label>Panel
+        <select id="panelPick">
+          <option value="0">Hero (large)</option>
+          <option value="1">Top right</option>
+          <option value="2">Bottom right</option>
+          <option value="3">Fourth</option>
+        </select>
+      </label>
+      <label>Zoom <span id="zoomVal">100%</span>
+        <input id="zoom" type="range" min="1" max="3" step="0.05" value="1">
+      </label>
+      <div class="row">
+        <button id="rotate" type="button">Rotate 90°</button>
+        <button id="resetPanel" type="button">Reset panel</button>
+      </div>
+      <p class="hint">Tip: drag a photo on the canvas to move it inside its panel.</p>
+    </fieldset>
+
+    <fieldset class="export-box">
+      <legend>Export PNG</legend>
+      <label class="radio"><input type="radio" name="size" value="1080x1080" checked> 1080 × 1080 · square</label>
+      <label class="radio"><input type="radio" name="size" value="1080x1350"> 1080 × 1350 · portrait</label>
+      <label class="radio"><input type="radio" name="size" value="1920x1080"> 1920 × 1080 · wide</label>
+      <button id="export" type="button">Export PNG</button>
+    </fieldset>
+    <p id="status" role="status"></p>
+  </section>
+  <section class="preview" aria-label="Live preview">
+    <canvas id="cover" width="1080" height="1080"></canvas>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
