@@ -3,91 +3,96 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice Cover Studio — turn your photos into a poster cover</title>
+<title>Vice Cover Studio — multi-panel poster cover maker</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <main class="app">
-  <section class="controls" aria-label="Cover controls">
+  <aside class="controls" aria-label="Cover controls">
     <h1>Vice Cover Studio</h1>
     <p class="tagline">Your photos, a sunset poster cover. 100% offline — your photos never leave this browser.</p>
 
-    <div id="dropzone" class="dropzone">
-      <label class="file-label">Add photos
-        <input id="photo" type="file" accept="image/*" multiple>
-      </label>
-      <span>or drop up to 3 photos here</span>
-    </div>
+    <label class="dropzone" id="dropzone" for="photo">
+      <span class="dropzone-title">Add photos</span>
+      <span class="dropzone-hint">or drop up to 3 photos here</span>
+      <input id="photo" type="file" accept="image/*" multiple>
+    </label>
 
     <label>Layout
-      <select id="layout"></select>
+      <select id="layout">
+        <option value="vice-grid">Vice Grid</option>
+        <option value="sunset-strip">Sunset Strip</option>
+        <option value="neon-trio">Neon Trio</option>
+      </select>
     </label>
+
     <label>Grade
-      <select id="theme"></select>
+      <select id="theme">
+        <option value="sunset">Sunset Vice City</option>
+        <option value="neon">Neon Night</option>
+        <option value="dusk">Palm Dusk</option>
+      </select>
     </label>
+
     <label>Photos across panels
-      <select id="fillMode">
+      <select id="mode">
         <option value="all">One photo, all panels</option>
-        <option value="per-panel">One photo per panel</option>
+        <option value="per">One photo per panel</option>
       </select>
     </label>
 
     <label>Title
       <input id="title" type="text" maxlength="40" value="Sunset Heist">
     </label>
+
     <label>Sub-caption
-      <input id="subtitle" type="text" maxlength="60" value="Vice City Nights">
+      <input id="sub" type="text" maxlength="40" value="Vice City Nights">
     </label>
+
     <div class="row">
       <label>Title position
-        <select id="titlePos">
+        <select id="position">
           <option value="bottom">Bottom</option>
-          <option value="middle">Middle</option>
           <option value="top">Top</option>
+          <option value="center">Centre</option>
         </select>
       </label>
       <label>Title colour
-        <select id="titleColor">
-          <option value="#ffffff">White</option>
-          <option value="#ffd23f">Sunset yellow</option>
-          <option value="#ff5e8a">Hot pink</option>
-          <option value="#00e5ff">Neon cyan</option>
+        <select id="color">
+          <option value="white">White</option>
+          <option value="yellow">Neon yellow</option>
+          <option value="pink">Hot pink</option>
         </select>
       </label>
     </div>
 
     <fieldset class="panel-tools">
-      <legend>Selected panel</legend>
-      <label>Panel
-        <select id="panelPick">
-          <option value="0">Hero (large)</option>
-          <option value="1">Top right</option>
-          <option value="2">Bottom right</option>
-          <option value="3">Fourth</option>
-        </select>
+      <legend id="panel-label">Selected panel 1 of 3 (photo panel)</legend>
+      <label>Zoom
+        <input id="zoom" type="range" min="50" max="300" value="100">
       </label>
-      <label>Zoom <span id="zoomVal">100%</span>
-        <input id="zoom" type="range" min="1" max="3" step="0.05" value="1">
-      </label>
-      <div class="row">
+      <div class="row buttons">
         <button id="rotate" type="button">Rotate 90°</button>
-        <button id="resetPanel" type="button">Reset panel</button>
+        <button id="fit" type="button">Fit</button>
+        <button id="fill" type="button">Fill</button>
       </div>
-      <p class="hint">Tip: drag a photo on the canvas to move it inside its panel.</p>
+      <p class="hint">Click a panel to select it. Drag it to move the photo, scroll to zoom.</p>
     </fieldset>
 
     <fieldset class="export-box">
-      <legend>Export PNG</legend>
-      <label class="radio"><input type="radio" name="size" value="1080x1080" checked> 1080 × 1080 · square</label>
-      <label class="radio"><input type="radio" name="size" value="1080x1350"> 1080 × 1350 · portrait</label>
-      <label class="radio"><input type="radio" name="size" value="1920x1080"> 1920 × 1080 · wide</label>
-      <button id="export" type="button">Export PNG</button>
+      <legend>Export size</legend>
+      <label class="radio"><input type="radio" name="exportSize" value="1080x1080" checked> 1080 × 1080</label>
+      <label class="radio"><input type="radio" name="exportSize" value="1080x1350"> 1080 × 1350</label>
+      <label class="radio"><input type="radio" name="exportSize" value="1920x1080"> 1920 × 1080</label>
     </fieldset>
+
+    <button id="export" type="button" class="export-btn">Export PNG</button>
     <p id="status" role="status"></p>
-  </section>
-  <section class="preview" aria-label="Live preview">
-    <canvas id="cover" width="1080" height="1080"></canvas>
+  </aside>
+
+  <section class="stage" aria-label="Live cover preview">
+    <canvas id="cover" width="1080" height="1080" aria-label="The cover preview"></canvas>
   </section>
 </main>
 <script type="module" src="./src/main.js"></script>

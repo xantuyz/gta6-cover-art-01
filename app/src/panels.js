@@ -1,61 +1,89 @@
-// Multi-panel layout presets for Vice Cover Studio.
-// A layout is a list of panels. Every panel is a rectangle in fractions of
-// the cover (x, y, w, h from 0 to 1) plus a kind: 'photo' shows a user photo,
-// 'art' is drawn procedurally (striped sun, palms, skyline) by cover.js.
-// The caption strip is drawn by cover.js below the panels, it is not a panel.
+// Multi-panel layouts for the cover. A layout splits the photo area (the part of
+// the cover outside the caption band) into rectangles. Each rectangle is either a
+// photo panel or an original procedural-art panel (`art: 'sunset'`), so every
+// cover mixes the user's photos with drawn art. Coordinates are fractions of the
+// photo area, so the same layout works at any export size.
+
+/**
+ * A panel rectangle: x/y/w/h are fractions of the photo area, `art` names the
+ * procedural scene drawn when the panel holds no photo.
+ */
+function rect(x, y, w, h, art) {
+  return { x, y, w, h, art: art || null };
+}
+
 export const LAYOUTS = {
-  vice: {
-    id: 'vice',
+  'vice-grid': {
+    id: 'vice-grid',
     label: 'Vice Grid',
-    panels: [
-      { x: 0, y: 0, w: 0.58, h: 1, kind: 'photo' },
-      { x: 0.6, y: 0, w: 0.4, h: 0.48, kind: 'photo' },
-      { x: 0.6, y: 0.5, w: 0.4, h: 0.5, kind: 'art' },
-    ],
+    blurb: 'Big hero photo left, two panels right',
+    rects() {
+      return [
+        rect(0, 0, 0.58, 1, null),
+        rect(0.58, 0, 0.42, 0.52, null),
+        rect(0.58, 0.52, 0.42, 0.48, 'sunset'),
+      ];
+    },
   },
-  strip: {
-    id: 'strip',
+  'sunset-strip': {
+    id: 'sunset-strip',
     label: 'Sunset Strip',
-    panels: [
-      { x: 0, y: 0, w: 1, h: 0.62, kind: 'photo' },
-      { x: 0, y: 0.64, w: 0.32, h: 0.36, kind: 'photo' },
-      { x: 0.34, y: 0.64, w: 0.32, h: 0.36, kind: 'art' },
-      { x: 0.68, y: 0.64, w: 0.32, h: 0.36, kind: 'photo' },
-    ],
+    blurb: 'Wide hero on top, three panels below',
+    rects() {
+      return [
+        rect(0, 0, 1, 0.62, null),
+        rect(0, 0.62, 0.34, 0.38, null),
+        rect(0.34, 0.62, 0.33, 0.38, null),
+        rect(0.67, 0.62, 0.33, 0.38, 'sunset'),
+      ];
+    },
   },
-  trio: {
-    id: 'trio',
+  'neon-trio': {
+    id: 'neon-trio',
     label: 'Neon Trio',
-    panels: [
-      { x: 0, y: 0, w: 0.32, h: 1, kind: 'photo' },
-      { x: 0.34, y: 0, w: 0.32, h: 1, kind: 'art' },
-      { x: 0.68, y: 0, w: 0.32, h: 1, kind: 'photo' },
-    ],
+    blurb: 'Three tall panels, art in the middle',
+    rects() {
+      return [
+        rect(0, 0, 0.34, 1, null),
+        rect(0.34, 0, 0.32, 1, 'sunset'),
+        rect(0.66, 0, 0.34, 1, null),
+      ];
+    },
   },
 };
 
-/** Returns the layout object for `id`, falling back to Vice Grid. */
+/** Returns the layout for `id`, falling back to Vice Grid. */
 export function layoutById(id) {
-  return LAYOUTS[id] ?? LAYOUTS.vice;
+  return LAYOUTS[id] || LAYOUTS['vice-grid'];
 }
 
-/** The ids of all layouts, in the order the editor shows them. */
+/** The layout ids in menu order. */
 export function layoutIds() {
   return Object.keys(LAYOUTS);
 }
 
 /**
- * Turns a layout's fractional panels into pixel rectangles for a cover of
- * size `width` x `height`, leaving a caption strip of `stripH` pixels at the
- * bottom and a thin outer margin around everything.
+ * Turns a layout's fractional rects into pixel rects inside `area`
+ * ({x, y, w, h} in pixels). The returned rects keep the `art` marker.
  */
-export function panelRects(layout, width, height, stripH, margin) {
-  const bodyH = height - stripH - margin * 2;
-  return layout.panels.map((p) => ({
-    x: margin + p.x * (width - margin * 2),
-    y: margin + p.y * bodyH,
-    w: p.w * (width - margin * 2),
-    h: p.h * bodyH,
-    kind: p.kind,
+export function layoutRects(layoutId, area) {
+  return layoutById(layoutId).rects().map((r) => ({
+    x: area.x + r.x * area.w,
+    y: area.y + r.y * area.h,
+    w: r.w * area.w,
+    h: r.h * area.h,
+    art: r.art,
   }));
+}
+
+/**
+ * Finds which pixel rect contains point (px, py), or -1 when the point is
+ * outside every panel. Used to select a panel by clicking the preview.
+ */
+export function panelAt(rects, px, py) {
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) return i;
+  }
+  return -1;
 }

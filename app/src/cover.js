@@ -1,323 +1,312 @@
-// The cover renderer for Vice Cover Studio: multi-panel composition, sunset
-// grade, original procedural art (striped sun, palm silhouettes, skyline) and
-// bold poster lettering. Everything is drawn with Canvas 2D — no images
-// other than the user's own photos.
+// The cover renderer: `drawCover(canvas, state)` composes the whole poster —
+// multi-panel photos, original procedural art, the colour grade, and the bold
+// poster lettering — at the canvas's own pixel size, so the live preview and
+// the exported PNG are the same drawing at different resolutions.
 //
-// State shape (built by main.js):
-//   { photos: [HTMLImageElement], assign: [photoIndex per panel, -1 = art],
-//     layout, theme, title, subtitle, titlePos: 'bottom'|'middle'|'top',
-//     titleColor: '#ffffff'|..., fillMode: 'all'|'per-panel',
-//     panels: [{ zoom, dx, dy, rot }] }  (zoom/dx/dy/rot per panel index)
-import { layoutById, panelRects } from './panels.js';
+// `state` shape:
+//   { layout, theme, photos: HTMLImageElement[], panels: [{photo, scale, dx, dy, rot}],
+//     title, sub, captionPos: 'bottom'|'top'|'center', titleColor: 'white'|'yellow'|'pink' }
+// A panel whose `photo` is -1 (or whose photo is missing) draws procedural art.
+
 import { themeById } from './themes.js';
+import { layoutRects } from './panels.js';
+import { drawPhotoInPanel } from './images.js';
 
-const CAPTION_FONT = 'Anton, "Arial Black", sans-serif';
+const TITLE_COLORS = {
+  white: '#ffffff',
+  yellow: '#ffcf4d',
+  pink: '#ff7ad9',
+};
 
-/** Largest font size (px) that lets `text` fit inside `maxWidth`. */
-export function fitCaptionFont(ctx, text, maxWidth, startSize) {
-  let size = startSize;
-  ctx.font = `${size}px ${CAPTION_FONT}`;
-  while (size > 14 && ctx.measureText(text).width > maxWidth) {
-    size -= 2;
-    ctx.font = `${size}px ${CAPTION_FONT}`;
-  }
-  return size;
+/** Deterministic pseudo-random from an integer seed (no Math.random in art). */
+function seeded(i) {
+  const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
 }
 
 /**
- * Draws `img` into rectangle (x, y, w, h) with cover-fit cropping, applying
- * a zoom factor, a pan offset (fractions of the rect) and a 90-degree-step
- * rotation. The photo is clipped to the rectangle.
+ * Draws the full cover onto `canvas` from `state`. Safe to call on every UI
+ * change: it repaints from scratch each time.
  */
-export function cropPanelToFit(ctx, img, x, y, w, h, zoom, dx, dy, rot) {
-  const iw = img.naturalWidth;
-  const ih = img.naturalHeight;
-  const steps = ((Math.round(rot / 90) % 4) + 4) % 4;
-  const swapped = steps % 2 === 1;
-  const srcW = swapped ? ih : iw;
-  const srcH = swapped ? iw : ih;
-  const scale = Math.max(w / srcW, h / srcH) * (zoom || 1);
-  const dw = srcW * scale;
-  const dh = srcH * scale;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-  ctx.translate(x + w / 2 + (dx || 0) * w, y + h / 2 + (dy || 0) * h);
-  ctx.rotate((steps * Math.PI) / 2);
-  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-  ctx.restore();
-}
+export function drawCover(canvas, state) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const theme = themeById(state.theme);
+  const gap = Math.max(5, Math.round(W * 0.007));
+  const bandH = Math.round(H * 0.155);
 
-/** A retro striped sun: a circle sliced by horizontal sky-coloured gaps. */
-export function drawStripedSun(ctx, cx, cy, r, theme) {
-  ctx.save();
-  const grad = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
-  grad.addColorStop(0, theme.sunCore);
-  grad.addColorStop(1, theme.sunRim);
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-  // Cut widening horizontal slits through the lower half of the disc.
-  ctx.globalCompositeOperation = 'destination-out';
-  let gap = r * 0.045;
-  for (let i = 0; i < 5; i += 1) {
-    const yy = cy + r * (0.08 + i * 0.17);
-    ctx.fillRect(cx - r, yy, r * 2, gap);
-    gap *= 1.55;
+  // Caption band position decides where the panels live.
+  let area;
+  let bandY;
+  if (state.captionPos === 'top') {
+    bandY = 0;
+    area = { x: 0, y: bandH, w: W, h: H - bandH };
+  } else if (state.captionPos === 'center') {
+    bandY = Math.round((H - bandH) / 2);
+    area = { x: 0, y: 0, w: W, h: H };
+  } else {
+    bandY = H - bandH;
+    area = { x: 0, y: 0, w: W, h: H - bandH };
   }
-  ctx.restore();
-}
 
-/** A palm silhouette: curved trunk plus seven drooping fronds. */
-export function drawPalmSilhouette(ctx, x, baseY, height, lean, theme) {
-  ctx.save();
-  ctx.strokeStyle = theme.silhouette;
-  ctx.fillStyle = theme.silhouette;
-  ctx.lineCap = 'round';
-  const topX = x + lean * height;
-  const topY = baseY - height;
-  ctx.lineWidth = Math.max(2, height * 0.045);
-  ctx.beginPath();
-  ctx.moveTo(x, baseY);
-  ctx.quadraticCurveTo(x + lean * height * 0.4, baseY - height * 0.55, topX, topY);
-  ctx.stroke();
-  // Fronds fan upward from the crown, then droop: each one is a quadratic
-  // arc whose tip ends at or just below crown height.
-  for (let i = 0; i < 7; i += 1) {
-    const angle = Math.PI * (1.12 + i * 0.13);
-    const len = height * (0.26 + (i % 3) * 0.04);
-    const tipX = topX + Math.cos(angle) * len;
-    const tipY = topY + Math.sin(angle) * len * 0.55 + len * 0.42;
-    const midX = topX + Math.cos(angle) * len * 0.5;
-    const midY = topY + Math.sin(angle) * len * 0.7 - len * 0.12;
-    ctx.lineWidth = Math.max(1.5, height * 0.018);
+  ctx.fillStyle = theme.band;
+  ctx.fillRect(0, 0, W, H);
+
+  const rects = layoutRects(state.layout, area);
+  rects.forEach((r, i) => {
+    const inset = {
+      x: r.x + gap / 2,
+      y: r.y + gap / 2,
+      w: r.w - gap,
+      h: r.h - gap,
+      art: r.art,
+    };
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(topX, topY);
-    ctx.quadraticCurveTo(midX, midY, tipX, tipY);
-    ctx.stroke();
-  }
-  ctx.restore();
+    ctx.rect(inset.x, inset.y, inset.w, inset.h);
+    ctx.clip();
+    const panel = state.panels[i];
+    const img = panel && panel.photo >= 0 ? state.photos[panel.photo] : null;
+    if (img) {
+      drawPhotoInPanel(ctx, img, inset, panel);
+    } else {
+      drawProceduralArt(ctx, inset, theme);
+    }
+    ctx.restore();
+    ctx.strokeStyle = theme.frame;
+    ctx.lineWidth = Math.max(2, Math.round(W * 0.003));
+    ctx.strokeRect(inset.x, inset.y, inset.w, inset.h);
+  });
+
+  applySunsetGrade(ctx, area, theme, W, H);
+  drawCaptionBand(ctx, W, H, bandY, bandH, state, theme);
 }
 
-/** A jagged skyline silhouette with a few lit windows. */
-export function drawSkylineSilhouette(ctx, x, baseY, w, h, theme) {
-  ctx.save();
-  ctx.fillStyle = theme.silhouette;
-  let cx = x;
-  let seed = 7;
-  const next = () => {
-    seed = (seed * 16807) % 2147483647;
-    return seed / 2147483647;
-  };
-  ctx.beginPath();
-  ctx.moveTo(x, baseY);
-  while (cx < x + w) {
-    const bw = w * (0.08 + next() * 0.1);
-    const bh = h * (0.35 + next() * 0.65);
-    ctx.lineTo(cx, baseY - bh);
-    ctx.lineTo(cx + bw, baseY - bh);
-    ctx.lineTo(cx + bw, baseY);
-    cx += bw;
-  }
-  ctx.lineTo(x + w, baseY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = theme.sunCore;
-  for (let i = 0; i < 14; i += 1) {
-    const wx = x + next() * w;
-    const wy = baseY - h * (0.15 + next() * 0.6);
-    ctx.globalAlpha = 0.75;
-    ctx.fillRect(wx, wy, Math.max(2, w * 0.008), Math.max(2, w * 0.008));
-  }
-  ctx.restore();
-}
+/** Warm grade wash + vignette + halftone dots over the panel area. */
+export function applySunsetGrade(ctx, area, theme, W, H) {
+  const g = ctx.createLinearGradient(0, area.y, 0, area.y + area.h);
+  g.addColorStop(0, theme.gradeTop);
+  g.addColorStop(0.55, 'rgba(255, 90, 120, 0.10)');
+  g.addColorStop(1, theme.gradeBottom);
+  ctx.fillStyle = g;
+  ctx.fillRect(area.x, area.y, area.w, area.h);
 
-/** A field of tiny halftone dots, used as a corner texture. */
-export function drawHalftoneDots(ctx, x, y, w, h, color, spacing) {
-  ctx.save();
-  ctx.fillStyle = color;
-  const step = spacing || 14;
-  for (let yy = y; yy < y + h; yy += step) {
-    for (let xx = x; xx < x + w; xx += step) {
-      const fade = 1 - ((xx - x) / w) * 0.6 - ((yy - y) / h) * 0.6;
-      if (fade <= 0) continue;
-      ctx.globalAlpha = 0.28 * fade;
+  const v = ctx.createRadialGradient(
+    area.x + area.w / 2, area.y + area.h / 2, Math.min(area.w, area.h) * 0.35,
+    area.x + area.w / 2, area.y + area.h / 2, Math.max(area.w, area.h) * 0.75,
+  );
+  v.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  v.addColorStop(1, theme.vignette);
+  ctx.fillStyle = v;
+  ctx.fillRect(area.x, area.y, area.w, area.h);
+
+  // Halftone dots fading down the top-right corner of the panel area.
+  const step = Math.max(14, Math.round(W * 0.014));
+  ctx.fillStyle = theme.halftone;
+  for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < 9; col++) {
+      const r = Math.max(0.6, (7 - row) * 0.55);
+      const cx = area.x + area.w - (col + 0.7) * step;
+      const cy = area.y + (row + 0.7) * step;
       ctx.beginPath();
-      ctx.arc(xx, yy, step * 0.16, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fill();
     }
   }
-  ctx.restore();
 }
 
 /**
- * One fully procedural art panel: sunset sky, striped sun, skyline, two
- * palms and a halftone corner. No photo needed — this is the original art
- * that makes the cover read as a poster, not a photo grid.
+ * Original procedural scene: gradient sky, a striped setting sun, a city
+ * skyline silhouette, palm silhouettes, birds, and a perspective road line.
+ * Drawn fresh from code every time — no image assets involved.
  */
-export function drawArtPanel(ctx, x, y, w, h, theme) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
+export function drawProceduralArt(ctx, rect, theme) {
+  const { x, y, w, h } = rect;
   const sky = ctx.createLinearGradient(0, y, 0, y + h);
-  sky.addColorStop(0, theme.skyTop);
-  sky.addColorStop(0.55, theme.skyMid);
-  sky.addColorStop(1, theme.skyBottom);
+  theme.sky.forEach((c, i) => sky.addColorStop(i / (theme.sky.length - 1), c));
   ctx.fillStyle = sky;
   ctx.fillRect(x, y, w, h);
-  drawStripedSun(ctx, x + w * 0.5, y + h * 0.42, Math.min(w, h) * 0.3, theme);
-  drawSkylineSilhouette(ctx, x, y + h * 0.92, w, h * 0.34, theme);
+
+  drawStripedSun(ctx, x + w * 0.62, y + h * 0.42, Math.min(w, h) * 0.30, theme);
+  drawBirds(ctx, x + w * 0.16, y + h * 0.20, Math.min(w, h) * 0.05, theme);
+  // Palms stand behind the skyline so their trunks read against the sky and
+  // disappear naturally behind the buildings.
+  drawPalm(ctx, x + w * 0.10, y + h, h * 0.60, -1, theme);
+  drawPalm(ctx, x + w * 0.92, y + h, h * 0.48, 1, theme);
+  drawSkyline(ctx, x, y + h * 0.62, w, h * 0.38, theme);
+  drawRoad(ctx, x, y + h, w, h, theme);
+}
+
+/** A setting sun with horizontal slats cut through its lower half. */
+export function drawStripedSun(ctx, cx, cy, r, theme) {
+  const off = document.createElement('canvas');
+  off.width = Math.ceil(r * 2 + 4);
+  off.height = Math.ceil(r * 2 + 4);
+  const o = off.getContext('2d');
+  const g = o.createLinearGradient(0, 0, 0, off.height);
+  g.addColorStop(0, theme.sunTop);
+  g.addColorStop(1, theme.sunBottom);
+  o.fillStyle = g;
+  o.beginPath();
+  o.arc(r + 2, r + 2, r, 0, Math.PI * 2);
+  o.fill();
+  // Cut slats out of the lower half: gaps widen toward the bottom.
+  o.globalCompositeOperation = 'destination-out';
+  let yy = r + 2 + r * 0.08;
+  let thick = Math.max(2, r * 0.035);
+  while (yy < r * 2) {
+    o.fillRect(0, yy, off.width, thick);
+    yy += thick + Math.max(3, r * 0.10);
+    thick += Math.max(1, r * 0.02);
+  }
+  ctx.drawImage(off, cx - r - 2, cy - r - 2);
+}
+
+/** A dark skyline silhouette with a few lit windows. */
+export function drawSkyline(ctx, x, top, w, h, theme) {
   ctx.fillStyle = theme.silhouette;
-  ctx.fillRect(x, y + h * 0.92, w, h * 0.08);
-  drawPalmSilhouette(ctx, x + w * 0.12, y + h, h * 0.55, 0.12, theme);
-  drawPalmSilhouette(ctx, x + w * 0.9, y + h, h * 0.44, -0.1, theme);
-  drawHalftoneDots(ctx, x + w * 0.62, y + h * 0.04, w * 0.36, h * 0.3, '#ffffff', Math.max(9, w * 0.045));
-  ctx.restore();
-}
-
-/** Sunset / neon wash over the whole cover plus a soft vignette. */
-export function applySunsetGrade(ctx, w, h, theme) {
-  const wash = ctx.createLinearGradient(0, 0, 0, h);
-  wash.addColorStop(0, theme.gradeTop);
-  wash.addColorStop(1, theme.gradeBottom);
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, 0, w, h);
-  const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.42, w / 2, h / 2, Math.max(w, h) * 0.75);
-  vig.addColorStop(0, 'rgba(0,0,0,0)');
-  vig.addColorStop(1, 'rgba(10,4,20,0.38)');
-  ctx.fillStyle = vig;
-  ctx.fillRect(0, 0, w, h);
-}
-
-/** Bold poster lettering: outlined capitals with a hard drop shadow. */
-export function drawCaptionLettering(ctx, text, cx, cy, maxWidth, color, startSize) {
-  const clean = (text || '').trim().toUpperCase();
-  if (!clean) return 0;
-  const size = fitCaptionFont(ctx, clean, maxWidth, startSize);
-  ctx.save();
-  ctx.font = `${size}px ${CAPTION_FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.lineJoin = 'round';
-  ctx.shadowColor = 'rgba(0,0,0,0.55)';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetX = size * 0.06;
-  ctx.shadowOffsetY = size * 0.06;
-  ctx.strokeStyle = 'rgba(0,0,0,0.9)';
-  ctx.lineWidth = Math.max(2, size * 0.09);
-  ctx.strokeText(clean, cx, cy);
-  ctx.shadowColor = 'transparent';
-  ctx.fillStyle = color;
-  ctx.fillText(clean, cx, cy);
-  ctx.restore();
-  return size;
+  let bx = x;
+  let i = 0;
+  while (bx < x + w) {
+    const bw = w * (0.10 + seeded(i) * 0.10);
+    const bh = h * (0.35 + seeded(i + 40) * 0.65);
+    ctx.fillRect(bx, top + h - bh, bw, bh);
+    // Tiny lit windows on the taller blocks.
+    if (bh > h * 0.55) {
+      ctx.fillStyle = theme.window;
+      for (let wy = 0; wy < 3; wy++) {
+        for (let wx = 0; wx < 2; wx++) {
+          if (seeded(i * 7 + wy * 3 + wx) > 0.45) {
+            ctx.fillRect(bx + bw * (0.2 + wx * 0.4), top + h - bh + h * 0.12 + wy * h * 0.16, 3, 3);
+          }
+        }
+      }
+      ctx.fillStyle = theme.silhouette;
+    }
+    bx += bw;
+    i++;
+  }
+  ctx.fillRect(x, top + h - 2, w, 2);
 }
 
 /**
- * Renders the full multi-panel cover into `canvas` from `state`.
- * Layout panels fill the body; the caption strip sits at the bottom (or top
- * / middle when titlePos asks for it); a thin frame and a diagonal accent
- * bar finish the poster look.
+ * One stylised palm: a leaning trunk and seven arched fronds that droop from
+ * the crown. `lean` is -1 (leans left) or 1 (leans right); `size` is the palm
+ * height in pixels. Fronds stay close to the trunk so they read as a palm
+ * even inside a narrow panel.
  */
-export function renderMultiPanelCover(canvas, state) {
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-  const theme = themeById(state.theme);
-  const layout = layoutById(state.layout);
-  ctx.fillStyle = theme.strip;
-  ctx.fillRect(0, 0, w, h);
-
-  const margin = Math.round(Math.min(w, h) * 0.018);
-  const stripH = Math.round(h * 0.16);
-  const rects = panelRects(layout, w, h, stripH, margin);
-  const photos = state.photos || [];
-
-  rects.forEach((r, i) => {
-    if (r.kind === 'art') {
-      drawArtPanel(ctx, r.x, r.y, r.w, r.h, theme);
-      return;
-    }
-    let photoIdx = -1;
-    if (state.fillMode === 'all') photoIdx = photos.length ? 0 : -1;
-    else photoIdx = (state.assign || [])[i] ?? (photos.length ? Math.min(i, photos.length - 1) : -1);
-    const img = photoIdx >= 0 ? photos[photoIdx] : null;
-    if (img) {
-      const tune = (state.panels || [])[i] || {};
-      cropPanelToFit(ctx, img, r.x, r.y, r.w, r.h, tune.zoom || 1, tune.dx || 0, tune.dy || 0, tune.rot || 0);
-      // A light grade on photo panels only, so faces stay readable.
-      const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-      g.addColorStop(0, 'rgba(255,122,61,0.05)');
-      g.addColorStop(1, theme.gradeBottom);
-      ctx.fillStyle = g;
-      ctx.fillRect(r.x, r.y, r.w, r.h);
-    } else {
-      drawArtPanel(ctx, r.x, r.y, r.w, r.h, theme);
-    }
-  });
-
-  // Thin white frame + diagonal accent bar across the panel seams.
-  ctx.strokeStyle = theme.frame;
-  ctx.lineWidth = Math.max(2, Math.min(w, h) * 0.006);
-  ctx.strokeRect(margin / 2, margin / 2, w - margin, h - stripH - margin);
-  ctx.fillStyle = theme.accent;
-  ctx.save();
+export function drawPalm(ctx, baseX, baseY, size, lean, theme) {
+  const topX = baseX + lean * size * 0.16;
+  const topY = baseY - size;
+  ctx.strokeStyle = theme.silhouette;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(3, size * 0.05);
   ctx.beginPath();
-  ctx.rect(margin / 2, margin / 2, w - margin, h - stripH - margin);
-  ctx.clip();
-  ctx.translate(w * 0.72, h - stripH - margin);
-  ctx.rotate(-0.06);
-  ctx.fillRect(0, -Math.max(3, h * 0.008), w * 0.28, Math.max(4, h * 0.012));
-  ctx.restore();
-
-  // Caption strip.
-  const stripY = h - stripH;
-  ctx.fillStyle = theme.strip;
-  ctx.fillRect(0, stripY, w, stripH);
-  const pos = state.titlePos || 'bottom';
-  let cy = stripY + stripH * 0.42;
-  if (pos === 'top') cy = margin + stripH * 0.4;
-  if (pos === 'middle') cy = h * 0.46;
-  if (pos === 'top') {
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(0, 0, w, stripH);
+  ctx.moveTo(baseX, baseY);
+  ctx.quadraticCurveTo(baseX + lean * size * 0.04, baseY - size * 0.55, topX, topY);
+  ctx.stroke();
+  ctx.lineWidth = Math.max(2, size * 0.028);
+  for (let f = 0; f < 7; f++) {
+    const spread = (f / 6 - 0.5) * 2; // -1 (left) .. 1 (right)
+    const reach = size * 0.26;
+    const fx = topX + spread * reach;
+    const fy = topY + size * 0.16 + Math.abs(spread) * size * 0.06;
+    const mx = topX + spread * reach * 0.55;
+    const my = topY - size * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.quadraticCurveTo(mx, my, fx, fy);
+    ctx.stroke();
   }
-  const titleSize = drawCaptionLettering(
-    ctx, state.title || 'VICE CITY', w / 2, cy, w * 0.92,
-    state.titleColor || theme.stripText, Math.round(stripH * 0.62),
-  );
-  if (state.subtitle && state.subtitle.trim()) {
-    ctx.save();
-    ctx.font = `600 ${Math.max(12, Math.round(titleSize * 0.28))}px system-ui, sans-serif`;
+  ctx.fillStyle = theme.silhouette;
+  ctx.beginPath();
+  ctx.arc(topX - size * 0.02, topY + size * 0.03, Math.max(2, size * 0.03), 0, Math.PI * 2);
+  ctx.arc(topX + size * 0.02, topY + size * 0.04, Math.max(2, size * 0.025), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Three small birds as simple curved strokes. */
+export function drawBirds(ctx, x, y, s, theme) {
+  ctx.strokeStyle = theme.silhouette;
+  ctx.lineWidth = Math.max(1.5, s * 0.12);
+  ctx.lineCap = 'round';
+  const spots = [[0, 0], [1.6, 0.7], [0.7, 1.5]];
+  for (const [ox, oy] of spots) {
+    const bx = x + ox * s;
+    const by = y + oy * s;
+    ctx.beginPath();
+    ctx.moveTo(bx - s * 0.45, by);
+    ctx.quadraticCurveTo(bx - s * 0.15, by - s * 0.4, bx, by);
+    ctx.quadraticCurveTo(bx + s * 0.15, by - s * 0.4, bx + s * 0.45, by);
+    ctx.stroke();
+  }
+}
+
+/** A single accent road line rising along the foot of the art panel. */
+export function drawRoad(ctx, x, bottomY, w, h, theme) {
+  ctx.strokeStyle = theme.accent;
+  ctx.lineWidth = Math.max(2, h * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(x, bottomY - h * 0.02);
+  ctx.lineTo(x + w, bottomY - h * 0.10);
+  ctx.stroke();
+}
+
+/** The caption band: bold auto-fit title with outline and the sub-caption. */
+export function drawCaptionBand(ctx, W, H, bandY, bandH, state, theme) {
+  const title = (state.title || '').trim().toUpperCase();
+  const sub = (state.sub || '').trim().toUpperCase();
+  if (!title && !sub) return;
+
+  if (state.captionPos === 'center') {
+    ctx.fillStyle = 'rgba(20, 8, 35, 0.72)';
+    ctx.fillRect(0, bandY, W, bandH);
+  } else {
+    ctx.fillStyle = theme.band;
+    ctx.fillRect(0, bandY, W, bandH);
+    // Thin accent rule along the band edge that meets the panels.
+    ctx.fillStyle = theme.accent;
+    const ruleY = state.captionPos === 'top' ? bandY + bandH - 3 : bandY;
+    ctx.fillRect(0, ruleY, W, 3);
+  }
+
+  if (title) {
+    const color = TITLE_COLORS[state.titleColor] || TITLE_COLORS.white;
+    let size = bandH * (sub ? 0.52 : 0.62);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = theme.accent;
-    const subY = pos === 'middle' ? cy + titleSize * 0.75 : cy + titleSize * 0.72;
-    ctx.fillText(state.subtitle.trim().toUpperCase(), w / 2, Math.min(subY, h - stripH * 0.18));
-    ctx.restore();
+    const setFont = (s) => { ctx.font = `${s}px Anton, 'Arial Narrow', sans-serif`; };
+    setFont(size);
+    while (ctx.measureText(title).width > W * 0.92 && size > 14) {
+      size -= 2;
+      setFont(size);
+    }
+    const ty = bandY + bandH * (sub ? 0.38 : 0.52);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(2, size * 0.10);
+    ctx.strokeStyle = theme.titleStroke;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = size * 0.12;
+    ctx.shadowOffsetY = size * 0.05;
+    ctx.strokeText(title, W / 2, ty);
+    ctx.fillStyle = color;
+    ctx.fillText(title, W / 2, ty);
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
   }
-  applySunsetGrade(ctx, w, h, theme);
-  return canvas;
-}
 
-/** Backwards-compatible entry point: draws the cover from `state`. */
-export function drawCover(canvas, state) {
-  return renderMultiPanelCover(canvas, state);
-}
-
-/**
- * Renders the cover offscreen at `width` x `height` and resolves with a
- * PNG Blob ready to download. Used by the export buttons.
- */
-export function exportCoverPNG(state, width, height) {
-  return new Promise((resolve) => {
-    const off = document.createElement('canvas');
-    off.width = width;
-    off.height = height;
-    renderMultiPanelCover(off, state);
-    off.toBlob((blob) => resolve(blob), 'image/png');
-  });
+  if (sub) {
+    let size = Math.max(12, bandH * 0.20);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const setFont = (s) => { ctx.font = `700 ${s}px system-ui, sans-serif`; };
+    setFont(size);
+    while (ctx.measureText(sub).width > W * 0.85 && size > 10) {
+      size -= 1;
+      setFont(size);
+    }
+    ctx.fillStyle = theme.sub;
+    ctx.fillText(sub, W / 2, bandY + bandH * 0.80);
+  }
 }
