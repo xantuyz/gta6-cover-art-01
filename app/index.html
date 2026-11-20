@@ -3,98 +3,91 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice Cover Studio</title>
+<title>Vice Cover Studio — multi-panel poster cover maker</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <main class="app">
   <section class="controls" aria-label="Cover controls">
     <h1>Vice Cover Studio</h1>
-    <p class="tagline">Your photos, made into a multi-panel poster cover. 100% offline — your photo never leaves this browser.</p>
+    <p class="tagline">Your photos, made into a bold multi-panel poster cover. 100% offline — your photos never leave this browser.</p>
 
     <label class="field">Photos
-      <input id="photo" type="file" accept="image/*" multiple>
-      <span class="hint">Pick several photos, or drop them on the preview.</span>
+      <input id="photos" type="file" accept="image/*" multiple>
+      <span class="hint">Upload your own, or use the two bundled samples.</span>
     </label>
 
     <fieldset>
       <legend>Layout</legend>
-      <div class="btn-row">
-        <button class="layout-btn active" type="button" data-layout="vice-grid">Vice Grid</button>
-        <button class="layout-btn" type="button" data-layout="sunset-strip">Sunset Strip</button>
-        <button class="layout-btn" type="button" data-layout="neon-trio">Neon Trio</button>
+      <div class="row">
+        <button type="button" data-layout="vice-grid" class="active">Vice Grid</button>
+        <button type="button" data-layout="sunset-strip">Sunset Strip</button>
+        <button type="button" data-layout="neon-trio">Neon Trio</button>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>Grade</legend>
-      <div class="btn-row">
-        <button class="theme-btn active" type="button" data-theme="sunset">Sunset Vice City</button>
-        <button class="theme-btn" type="button" data-theme="neon">Neon Night</button>
-        <button class="theme-btn" type="button" data-theme="dusk">Palm Dusk</button>
+      <div class="row">
+        <button type="button" data-grade="sunset" class="active">Sunset Vice City</button>
+        <button type="button" data-grade="neon">Neon Night</button>
+        <button type="button" data-grade="palm-dusk">Palm Dusk</button>
       </div>
     </fieldset>
 
     <label class="field">Caption
-      <input id="caption" type="text" maxlength="40" value="SUNSET HEIST">
+      <input id="caption" type="text" maxlength="40" value="VICE CITY NIGHTS">
     </label>
     <label class="field">Sub-caption
-      <input id="subcaption" type="text" maxlength="60" value="A POSTER FROM YOUR PHOTOS">
+      <input id="subCaption" type="text" maxlength="60" value="A STORY IN EVERY PANEL">
     </label>
-
     <div class="row">
-      <label class="field">Caption position
-        <select id="captionPos">
-          <option value="bottom" selected>Bottom</option>
-          <option value="middle">Middle</option>
-          <option value="top">Top</option>
-        </select>
-      </label>
       <label class="field">Caption colour
         <select id="captionColor">
-          <option value="white" selected>White</option>
+          <option value="white">White</option>
           <option value="yellow">Neon yellow</option>
           <option value="pink">Hot pink</option>
         </select>
       </label>
+      <label class="field">Caption position
+        <select id="captionPos">
+          <option value="bottom">Bottom</option>
+          <option value="middle">Middle</option>
+          <option value="top">Top</option>
+        </select>
+      </label>
     </div>
-
-    <label class="field">Photos across panels
-      <select id="fillMode">
-        <option value="per-panel" selected>One photo per panel</option>
-        <option value="one-photo">One photo, all panels</option>
-      </select>
-    </label>
 
     <fieldset>
       <legend>Selected panel</legend>
       <label class="field">Panel
-        <select id="panel"></select>
+        <select id="panelSelect"></select>
       </label>
-      <label class="field">Zoom <span id="zoomValue">1.00x</span>
+      <label class="field">Zoom
         <input id="zoom" type="range" min="0.5" max="3" step="0.05" value="1">
       </label>
-      <div class="btn-row">
+      <div class="row">
         <button id="rotate" type="button">Rotate 90°</button>
-        <button id="fit" type="button">Fit</button>
-        <button id="fill" type="button">Fill</button>
+        <button id="fit" type="button">Reset crop</button>
+        <button id="nextPhoto" type="button">Next photo</button>
       </div>
-      <p class="hint">Tip: drag a photo on the preview to move it, scroll to zoom.</p>
+      <p class="hint">Tip: drag a panel on the cover to pan its photo, scroll over it to zoom.</p>
     </fieldset>
 
     <fieldset>
       <legend>Export size</legend>
-      <div class="btn-row">
-        <label class="radio"><input type="radio" name="size" value="1080x1080" checked> 1080 × 1080</label>
-        <label class="radio"><input type="radio" name="size" value="1080x1350"> 1080 × 1350</label>
-        <label class="radio"><input type="radio" name="size" value="1920x1080"> 1920 × 1080</label>
+      <div class="row">
+        <label><input type="radio" name="exportSize" value="square" checked> 1080×1080</label>
+        <label><input type="radio" name="exportSize" value="portrait"> 1080×1350</label>
+        <label><input type="radio" name="exportSize" value="wide"> 1920×1080</label>
       </div>
     </fieldset>
 
-    <button id="export" type="button">Export PNG</button>
+    <button id="export" type="button" class="primary">Export PNG</button>
     <p id="status" role="status"></p>
   </section>
-  <section class="preview" id="dropZone" aria-label="Cover preview">
+  <section class="preview" aria-label="Live cover preview">
     <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
   </section>
 </main>

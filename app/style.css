@@ -7,33 +7,33 @@
 }
 
 html, body { margin: 0; min-height: 100%; background: #14101c; color: #f2eef7; font: 15px/1.45 system-ui, sans-serif; }
-.app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; min-height: 100vh; padding: 24px; box-sizing: border-box; }
+.app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 24px; box-sizing: border-box; }
 .controls { display: flex; flex-direction: column; gap: 14px; width: 320px; flex: none; }
-.controls h1 { margin: 0; font-family: 'Anton', 'Arial Narrow', sans-serif; font-size: 34px; letter-spacing: 1px; color: #ffd166; }
-.tagline { margin: 0; color: #b9aec9; }
-.field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
-.hint { font-weight: 400; font-size: 13px; color: #b9aec9; }
-fieldset { border: 1px solid #3a3049; border-radius: 8px; padding: 12px; margin: 0; }
-legend { font-weight: 700; padding: 0 6px; }
-.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.row { display: flex; gap: 12px; }
-.row .field { flex: 1; }
-input[type=text], select { font: inherit; padding: 8px; border: 1px solid #4a3f5e; border-radius: 6px; background: #221a30; color: #f2eef7; }
+.controls h1 { margin: 0; font: 400 30px/1.1 'Anton', 'Arial Black', sans-serif; letter-spacing: 1px; color: #ffb347; }
+.tagline { margin: 0; color: #b9b0c9; font-size: 13px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 13px; }
+.hint { font-weight: 400; color: #8d84a0; font-size: 12px; }
+fieldset { border: 1px solid #3a2f4d; border-radius: 8px; padding: 10px 12px; margin: 0; }
+legend { font-weight: 700; font-size: 13px; padding: 0 4px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row .field { flex: 1; min-width: 120px; }
+input[type=text], select { font: inherit; padding: 8px; border: 1px solid #4a3d61; border-radius: 6px; background: #1e1828; color: #f2eef7; }
 input[type=file] { font: inherit; }
-input[type=range] { width: 100%; accent-color: #ffd166; }
-button { font: inherit; font-weight: 700; padding: 9px 12px; border: 1px solid #4a3f5e; border-radius: 6px; background: #2a2138; color: #f2eef7; cursor: pointer; }
-button:hover { background: #372a4a; }
-button.active { background: #ffd166; border-color: #ffd166; color: #1d1226; }
-.radio { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
-#export { background: #ff5e7a; border-color: #ff5e7a; color: #fff; font-size: 16px; padding: 12px; }
-#export:hover { background: #ff7a90; }
-#status { margin: 0; min-height: 20px; color: #8fe3b0; }
-.preview { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
-.preview.drag { outline: 3px dashed #ffd166; outline-offset: 8px; }
-canvas { width: min(78vh, 100%); height: auto; aspect-ratio: auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55); touch-action: none; cursor: grab; }
-canvas:active { cursor: grabbing; }
-
+input[type=range] { width: 100%; accent-color: #ff5e7a; }
+button { font: inherit; font-weight: 700; padding: 9px 12px; border: 1px solid #4a3d61; border-radius: 6px; background: #241d33; color: #f2eef7; cursor: pointer; }
+button:hover { border-color: #ff5e7a; }
+button.active { background: #ff5e7a; border-color: #ff5e7a; color: #fff; }
+button.primary { background: #ff5e7a; border-color: #ff5e7a; color: #fff; font-size: 16px; padding: 12px; }
+button.primary:hover { background: #ff7a90; }
+#status { margin: 0; color: #ffb347; min-height: 1.2em; font-size: 13px; }
+.preview { flex: 1; display: flex; justify-content: center; }
+canvas { max-width: min(78vh, 62vw); max-height: 88vh; width: auto; height: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55); border-radius: 4px; }
 body.shot-cover .controls { display: none; }
-body.shot-cover .app { padding: 0; gap: 0; }
-body.shot-cover .preview { width: 100vw; height: 100vh; }
-body.shot-cover canvas { width: 100vw; height: 100vh; box-shadow: none; }
+body.shot-cover .app { padding: 0; }
+body.shot-cover .preview { display: contents; }
+body.shot-cover canvas { max-width: none; max-height: none; width: 100vw; height: 100vh; box-shadow: none; border-radius: 0; }
+@media (max-width: 900px) {
+  .app { flex-direction: column; }
+  .controls { width: 100%; }
+  canvas { max-width: 100%; }
+}
