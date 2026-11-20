@@ -1,40 +1,39 @@
 @font-face {
   font-family: 'Anton';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
   src: url('./fonts/Anton.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
-html, body { margin: 0; min-height: 100%; background: #14082e; color: #f4eefc; font: 15px/1.45 system-ui, sans-serif; }
+html, body { margin: 0; min-height: 100%; background: #14101c; color: #f2eef7; font: 15px/1.45 system-ui, sans-serif; }
 .app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; min-height: 100vh; padding: 24px; box-sizing: border-box; }
-.app.drag { outline: 3px dashed #ffd23f; outline-offset: -6px; }
-.controls { display: flex; flex-direction: column; gap: 14px; width: 320px; flex-shrink: 0; }
-.controls h1 { margin: 0; font-family: 'Anton', 'Arial Black', sans-serif; font-size: 34px; letter-spacing: 0.5px; color: #ffd23f; text-transform: uppercase; }
-.tagline { margin: 0; color: #c9b8e8; }
+.controls { display: flex; flex-direction: column; gap: 14px; width: 320px; flex: none; }
+.controls h1 { margin: 0; font-family: 'Anton', 'Arial Narrow', sans-serif; font-size: 34px; letter-spacing: 1px; color: #ffd166; }
+.tagline { margin: 0; color: #b9aec9; }
 .field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
-.hint { margin: 0; font-weight: 400; font-size: 13px; color: #a894cc; }
-input[type=text], input[type=file], select { font: inherit; padding: 8px; border: 1px solid #5b4486; border-radius: 6px; background: #241344; color: #f4eefc; }
-input[type=range] { width: 100%; accent-color: #ffd23f; }
-fieldset { border: 1px solid #4a3572; border-radius: 8px; padding: 10px 12px; margin: 0; }
-legend { font-weight: 700; color: #ffd23f; padding: 0 6px; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-button { font: inherit; font-weight: 700; padding: 9px 12px; border: 1px solid #5b4486; border-radius: 6px; background: #2a1650; color: #f4eefc; cursor: pointer; }
-button:hover { border-color: #ffd23f; }
-button.active { background: #ffd23f; color: #1c0b33; border-color: #ffd23f; }
-button.primary { background: #ff2d78; border-color: #ff2d78; color: #fff; font-size: 17px; padding: 12px; }
-button.primary:hover { background: #ff4d8d; }
-button.ghost { background: transparent; }
-#status { margin: 0; min-height: 1.2em; color: #7ee2a8; font-weight: 600; }
-.preview { position: sticky; top: 24px; }
-canvas { width: min(72vh, 62vw); height: auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55); background: #fff; display: block; }
+.hint { font-weight: 400; font-size: 13px; color: #b9aec9; }
+fieldset { border: 1px solid #3a3049; border-radius: 8px; padding: 12px; margin: 0; }
+legend { font-weight: 700; padding: 0 6px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.row { display: flex; gap: 12px; }
+.row .field { flex: 1; }
+input[type=text], select { font: inherit; padding: 8px; border: 1px solid #4a3f5e; border-radius: 6px; background: #221a30; color: #f2eef7; }
+input[type=file] { font: inherit; }
+input[type=range] { width: 100%; accent-color: #ffd166; }
+button { font: inherit; font-weight: 700; padding: 9px 12px; border: 1px solid #4a3f5e; border-radius: 6px; background: #2a2138; color: #f2eef7; cursor: pointer; }
+button:hover { background: #372a4a; }
+button.active { background: #ffd166; border-color: #ffd166; color: #1d1226; }
+.radio { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
+#export { background: #ff5e7a; border-color: #ff5e7a; color: #fff; font-size: 16px; padding: 12px; }
+#export:hover { background: #ff7a90; }
+#status { margin: 0; min-height: 20px; color: #8fe3b0; }
+.preview { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
+.preview.drag { outline: 3px dashed #ffd166; outline-offset: 8px; }
+canvas { width: min(78vh, 100%); height: auto; aspect-ratio: auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55); touch-action: none; cursor: grab; }
+canvas:active { cursor: grabbing; }
+
 body.shot-cover .controls { display: none; }
 body.shot-cover .app { padding: 0; gap: 0; }
-body.shot-cover .preview { position: static; }
-body.shot-cover canvas { width: 100vw; height: 100vh; object-fit: contain; box-shadow: none; }
-@media (max-width: 900px) {
-  .app { flex-direction: column; align-items: center; }
-  .controls { width: 100%; max-width: 520px; }
-  canvas { width: 100%; }
-}
+body.shot-cover .preview { width: 100vw; height: 100vh; }
+body.shot-cover canvas { width: 100vw; height: 100vh; box-shadow: none; }

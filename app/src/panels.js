@@ -1,70 +1,90 @@
-// Multi-panel layouts for Vice Cover Studio. A layout is a list of panel
-// rectangles in relative coordinates (x, y, w, h as fractions of the cover),
-// plus a label the editor shows. The hero panel is listed first so a single
-// photo fills the biggest panel by default; the other panels take the next
-// photos, or fall back to procedural art when empty.
-
+// Panel layouts and per-panel photo placement. A layout is a list of slots in
+// normalised coordinates (0..1 of the cover); the cover renderer scales them to
+// the canvas. A panel transform is { photo, scale, dx, dy, rot }: which loaded
+// photo it shows, a zoom multiplier on top of cover-fit, a pan offset as a
+// fraction of the panel size, and a rotation in quarter turns.
 export const LAYOUTS = {
-  grid: {
-    id: 'grid',
+  'vice-grid': {
     label: 'Vice Grid',
-    panels: [
-      { x: 0, y: 0, w: 0.58, h: 1 },
-      { x: 0.58, y: 0, w: 0.42, h: 0.5 },
-      { x: 0.58, y: 0.5, w: 0.42, h: 0.5 },
+    slots: [
+      { x: 0, y: 0, w: 0.56, h: 1 },
+      { x: 0.58, y: 0, w: 0.42, h: 0.49 },
+      { x: 0.58, y: 0.51, w: 0.42, h: 0.49 },
     ],
   },
-  strip: {
-    id: 'strip',
+  'sunset-strip': {
     label: 'Sunset Strip',
-    panels: [
+    slots: [
       { x: 0, y: 0, w: 1, h: 0.62 },
-      { x: 0, y: 0.62, w: 0.34, h: 0.38 },
-      { x: 0.34, y: 0.62, w: 0.33, h: 0.38 },
-      { x: 0.67, y: 0.62, w: 0.33, h: 0.38 },
+      { x: 0, y: 0.64, w: 0.32, h: 0.36 },
+      { x: 0.34, y: 0.64, w: 0.32, h: 0.36 },
+      { x: 0.68, y: 0.64, w: 0.32, h: 0.36 },
     ],
   },
-  trio: {
-    id: 'trio',
+  'neon-trio': {
     label: 'Neon Trio',
-    panels: [
-      { x: 0, y: 0, w: 0.34, h: 1 },
-      { x: 0.34, y: 0, w: 0.33, h: 1 },
-      { x: 0.67, y: 0, w: 0.33, h: 1 },
+    slots: [
+      { x: 0, y: 0, w: 0.32, h: 1 },
+      { x: 0.34, y: 0, w: 0.32, h: 1 },
+      { x: 0.68, y: 0, w: 0.32, h: 1 },
     ],
   },
 };
 
-/** Returns the layout object for `id`, falling back to Vice Grid. */
-export function getLayout(id) {
-  return LAYOUTS[id] || LAYOUTS.grid;
-}
-
-/** The ids of the layouts, in the order the editor shows them. */
 export const LAYOUT_IDS = Object.keys(LAYOUTS);
 
-/**
- * Builds one panel state per layout slot. `photos` is an array of images;
- * photo i fills panel i when present, otherwise the panel stays empty and
- * cover.js paints procedural art into it.
- */
-export function makePanelStates(layout, photos) {
-  return layout.panels.map((rect, i) => ({
-    rect,
-    img: photos[i] || null,
-    scale: 1,
-    offsetX: 0,
-    offsetY: 0,
-    rotation: 0,
-  }));
+/** Slots for a layout id, falling back to Vice Grid for unknown ids. */
+export function layoutSlots(layoutId) {
+  return (LAYOUTS[layoutId] ?? LAYOUTS['vice-grid']).slots;
+}
+
+/** A fresh, centred panel transform showing photo `photoIndex`. */
+export function defaultTransform(photoIndex) {
+  return { photo: photoIndex, scale: 1, dx: 0, dy: 0, rot: 0 };
+}
+
+/** One transform per slot, spreading the loaded photos across the panels. */
+export function defaultPanels(layoutId, photoCount) {
+  const slots = layoutSlots(layoutId);
+  return slots.map((_, i) => defaultTransform(photoCount > 0 ? i % photoCount : -1));
+}
+
+/** Cover-fit rectangle for `img` inside `rect` (the photo always fills the panel). */
+export function cropPanelToFit(img, rect) {
+  const scale = Math.max(rect.w / img.naturalWidth, rect.h / img.naturalHeight);
+  const pw = img.naturalWidth * scale;
+  const ph = img.naturalHeight * scale;
+  return { x: rect.x + (rect.w - pw) / 2, y: rect.y + (rect.h - ph) / 2, w: pw, h: ph };
 }
 
 /**
- * Cover-fits an image into a rectangle: returns the draw width/height so the
- * image covers the rectangle with no gaps, before the panel's own zoom and
- * pan offsets are applied.
+ * Draws `img` inside `rect` with a cover fit, then the panel transform: zoomed
+ * around the panel centre, panned by (dx, dy) and rotated by `rot` quarter-turns.
+ * The caller clips to the panel first.
  */
-export function cropPanelToFit(img, rectW, rectH) {
-  const scale = Math.max(rectW / img.naturalWidth, rectH / img.naturalHeight);
-  return { w: img.naturalWidth * scale, h: img.naturalHeight * scale };
+export function drawPhotoInPanel(ctx, img, rect, transform) {
+  const t = transform ?? defaultTransform(0);
+  const base = cropPanelToFit(img, rect);
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((t.rot % 4) * Math.PI / 2);
+  ctx.scale(t.scale, t.scale);
+  ctx.translate(-cx, -cy);
+  const px = base.x + t.dx * rect.w;
+  const py = base.y + t.dy * rect.h;
+  ctx.drawImage(img, px, py, base.w, base.h);
+  ctx.restore();
+}
+
+/** Which slot contains point (x, y) in cover pixels, or -1. */
+export function hitPanel(layoutId, coverW, coverH, x, y) {
+  const slots = layoutSlots(layoutId);
+  for (let i = 0; i < slots.length; i += 1) {
+    const s = slots[i];
+    const r = { x: s.x * coverW, y: s.y * coverH, w: s.w * coverW, h: s.h * coverH };
+    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return i;
+  }
+  return -1;
 }

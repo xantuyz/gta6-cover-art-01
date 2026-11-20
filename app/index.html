@@ -3,46 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice Cover Studio — multi-panel poster cover maker</title>
+<title>Vice Cover Studio</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<main class="app" id="dropzone">
-  <section class="controls">
+<main class="app">
+  <section class="controls" aria-label="Cover controls">
     <h1>Vice Cover Studio</h1>
-    <p class="tagline">Your photos, turned into a bold multi-panel poster cover. 100% offline — your photo never leaves this browser.</p>
+    <p class="tagline">Your photos, made into a multi-panel poster cover. 100% offline — your photo never leaves this browser.</p>
 
     <label class="field">Photos
-      <input id="photos" type="file" accept="image/*" multiple>
-      <span class="hint">Or drop photos anywhere on this page. One photo fills the hero panel; more photos fill the smaller panels.</span>
+      <input id="photo" type="file" accept="image/*" multiple>
+      <span class="hint">Pick several photos, or drop them on the preview.</span>
     </label>
-    <button id="sample" type="button" class="ghost">Load sample photos</button>
 
     <fieldset>
       <legend>Layout</legend>
-      <div class="row">
-        <button type="button" data-layout="grid" class="active">Vice Grid</button>
-        <button type="button" data-layout="strip">Sunset Strip</button>
-        <button type="button" data-layout="trio">Neon Trio</button>
+      <div class="btn-row">
+        <button class="layout-btn active" type="button" data-layout="vice-grid">Vice Grid</button>
+        <button class="layout-btn" type="button" data-layout="sunset-strip">Sunset Strip</button>
+        <button class="layout-btn" type="button" data-layout="neon-trio">Neon Trio</button>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>Grade</legend>
-      <div class="row">
-        <button type="button" data-theme="sunset" class="active">Sunset Vice City</button>
-        <button type="button" data-theme="neon">Neon Night</button>
-        <button type="button" data-theme="dusk">Palm Dusk</button>
+      <div class="btn-row">
+        <button class="theme-btn active" type="button" data-theme="sunset">Sunset Vice City</button>
+        <button class="theme-btn" type="button" data-theme="neon">Neon Night</button>
+        <button class="theme-btn" type="button" data-theme="dusk">Palm Dusk</button>
       </div>
     </fieldset>
 
-    <label class="field">Title
-      <input id="caption" type="text" maxlength="40" value="Sunset Heist">
+    <label class="field">Caption
+      <input id="caption" type="text" maxlength="40" value="SUNSET HEIST">
     </label>
     <label class="field">Sub-caption
-      <input id="subcaption" type="text" maxlength="60" value="Vice City Nights">
+      <input id="subcaption" type="text" maxlength="60" value="A POSTER FROM YOUR PHOTOS">
     </label>
-    <div class="row2">
+
+    <div class="row">
       <label class="field">Caption position
         <select id="captionPos">
           <option value="bottom" selected>Bottom</option>
@@ -50,46 +50,53 @@
           <option value="top">Top</option>
         </select>
       </label>
-      <label class="field">Title colour
+      <label class="field">Caption colour
         <select id="captionColor">
-          <option value="#ffffff" selected>White</option>
-          <option value="#ffd23f">Sunset gold</option>
-          <option value="#ff5ea8">Hot pink</option>
-          <option value="#00f0ff">Neon cyan</option>
+          <option value="white" selected>White</option>
+          <option value="yellow">Neon yellow</option>
+          <option value="pink">Hot pink</option>
         </select>
       </label>
     </div>
+
+    <label class="field">Photos across panels
+      <select id="fillMode">
+        <option value="per-panel" selected>One photo per panel</option>
+        <option value="one-photo">One photo, all panels</option>
+      </select>
+    </label>
 
     <fieldset>
       <legend>Selected panel</legend>
       <label class="field">Panel
         <select id="panel"></select>
       </label>
-      <label class="field">Zoom <span id="zoomLabel"></span>
-        <input id="zoom" type="range" min="50" max="300" value="100">
+      <label class="field">Zoom <span id="zoomValue">1.00x</span>
+        <input id="zoom" type="range" min="0.5" max="3" step="0.05" value="1">
       </label>
-      <div class="row">
-        <button id="rotate" type="button" class="ghost">Rotate 90°</button>
-        <button id="fit" type="button" class="ghost">Reset fit</button>
+      <div class="btn-row">
+        <button id="rotate" type="button">Rotate 90°</button>
+        <button id="fit" type="button">Fit</button>
+        <button id="fill" type="button">Fill</button>
       </div>
-      <p class="hint">Tip: drag a photo inside its panel to move it, click a panel to select it.</p>
+      <p class="hint">Tip: drag a photo on the preview to move it, scroll to zoom.</p>
     </fieldset>
 
     <fieldset>
       <legend>Export size</legend>
-      <div class="row">
-        <button type="button" data-size="1080x1080" class="active">1080 × 1080</button>
-        <button type="button" data-size="1080x1350">1080 × 1350</button>
-        <button type="button" data-size="1920x1080">1920 × 1080</button>
+      <div class="btn-row">
+        <label class="radio"><input type="radio" name="size" value="1080x1080" checked> 1080 × 1080</label>
+        <label class="radio"><input type="radio" name="size" value="1080x1350"> 1080 × 1350</label>
+        <label class="radio"><input type="radio" name="size" value="1920x1080"> 1920 × 1080</label>
       </div>
     </fieldset>
 
-    <button id="export" type="button" class="primary">Export PNG</button>
+    <button id="export" type="button">Export PNG</button>
     <p id="status" role="status"></p>
   </section>
-  <div class="preview">
+  <section class="preview" id="dropZone" aria-label="Cover preview">
     <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
-  </div>
+  </section>
 </main>
 <script type="module" src="./src/main.js"></script>
 </body>
