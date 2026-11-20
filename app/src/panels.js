@@ -1,89 +1,70 @@
-// Multi-panel layouts for the cover. A layout splits the photo area (the part of
-// the cover outside the caption band) into rectangles. Each rectangle is either a
-// photo panel or an original procedural-art panel (`art: 'sunset'`), so every
-// cover mixes the user's photos with drawn art. Coordinates are fractions of the
-// photo area, so the same layout works at any export size.
-
-/**
- * A panel rectangle: x/y/w/h are fractions of the photo area, `art` names the
- * procedural scene drawn when the panel holds no photo.
- */
-function rect(x, y, w, h, art) {
-  return { x, y, w, h, art: art || null };
-}
+// Multi-panel layouts for Vice Cover Studio. A layout is a list of panel
+// rectangles in relative coordinates (x, y, w, h as fractions of the cover),
+// plus a label the editor shows. The hero panel is listed first so a single
+// photo fills the biggest panel by default; the other panels take the next
+// photos, or fall back to procedural art when empty.
 
 export const LAYOUTS = {
-  'vice-grid': {
-    id: 'vice-grid',
+  grid: {
+    id: 'grid',
     label: 'Vice Grid',
-    blurb: 'Big hero photo left, two panels right',
-    rects() {
-      return [
-        rect(0, 0, 0.58, 1, null),
-        rect(0.58, 0, 0.42, 0.52, null),
-        rect(0.58, 0.52, 0.42, 0.48, 'sunset'),
-      ];
-    },
+    panels: [
+      { x: 0, y: 0, w: 0.58, h: 1 },
+      { x: 0.58, y: 0, w: 0.42, h: 0.5 },
+      { x: 0.58, y: 0.5, w: 0.42, h: 0.5 },
+    ],
   },
-  'sunset-strip': {
-    id: 'sunset-strip',
+  strip: {
+    id: 'strip',
     label: 'Sunset Strip',
-    blurb: 'Wide hero on top, three panels below',
-    rects() {
-      return [
-        rect(0, 0, 1, 0.62, null),
-        rect(0, 0.62, 0.34, 0.38, null),
-        rect(0.34, 0.62, 0.33, 0.38, null),
-        rect(0.67, 0.62, 0.33, 0.38, 'sunset'),
-      ];
-    },
+    panels: [
+      { x: 0, y: 0, w: 1, h: 0.62 },
+      { x: 0, y: 0.62, w: 0.34, h: 0.38 },
+      { x: 0.34, y: 0.62, w: 0.33, h: 0.38 },
+      { x: 0.67, y: 0.62, w: 0.33, h: 0.38 },
+    ],
   },
-  'neon-trio': {
-    id: 'neon-trio',
+  trio: {
+    id: 'trio',
     label: 'Neon Trio',
-    blurb: 'Three tall panels, art in the middle',
-    rects() {
-      return [
-        rect(0, 0, 0.34, 1, null),
-        rect(0.34, 0, 0.32, 1, 'sunset'),
-        rect(0.66, 0, 0.34, 1, null),
-      ];
-    },
+    panels: [
+      { x: 0, y: 0, w: 0.34, h: 1 },
+      { x: 0.34, y: 0, w: 0.33, h: 1 },
+      { x: 0.67, y: 0, w: 0.33, h: 1 },
+    ],
   },
 };
 
-/** Returns the layout for `id`, falling back to Vice Grid. */
-export function layoutById(id) {
-  return LAYOUTS[id] || LAYOUTS['vice-grid'];
+/** Returns the layout object for `id`, falling back to Vice Grid. */
+export function getLayout(id) {
+  return LAYOUTS[id] || LAYOUTS.grid;
 }
 
-/** The layout ids in menu order. */
-export function layoutIds() {
-  return Object.keys(LAYOUTS);
-}
+/** The ids of the layouts, in the order the editor shows them. */
+export const LAYOUT_IDS = Object.keys(LAYOUTS);
 
 /**
- * Turns a layout's fractional rects into pixel rects inside `area`
- * ({x, y, w, h} in pixels). The returned rects keep the `art` marker.
+ * Builds one panel state per layout slot. `photos` is an array of images;
+ * photo i fills panel i when present, otherwise the panel stays empty and
+ * cover.js paints procedural art into it.
  */
-export function layoutRects(layoutId, area) {
-  return layoutById(layoutId).rects().map((r) => ({
-    x: area.x + r.x * area.w,
-    y: area.y + r.y * area.h,
-    w: r.w * area.w,
-    h: r.h * area.h,
-    art: r.art,
+export function makePanelStates(layout, photos) {
+  return layout.panels.map((rect, i) => ({
+    rect,
+    img: photos[i] || null,
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0,
   }));
 }
 
 /**
- * Finds which pixel rect contains point (px, py), or -1 when the point is
- * outside every panel. Used to select a panel by clicking the preview.
+ * Cover-fits an image into a rectangle: returns the draw width/height so the
+ * image covers the rectangle with no gaps, before the panel's own zoom and
+ * pan offsets are applied.
  */
-export function panelAt(rects, px, py) {
-  for (let i = 0; i < rects.length; i++) {
-    const r = rects[i];
-    if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) return i;
-  }
-  return -1;
+export function cropPanelToFit(img, rectW, rectH) {
+  const scale = Math.max(rectW / img.naturalWidth, rectH / img.naturalHeight);
+  return { w: img.naturalWidth * scale, h: img.naturalHeight * scale };
 }
